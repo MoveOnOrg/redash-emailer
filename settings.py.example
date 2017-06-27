@@ -1,0 +1,5 @@
+REDASH_DOMAIN = 'http://example.com'
+SMTP_HOST = ''
+SMTP_LOGIN = ''
+SMTP_PASSWORD = ''
+SMTP_PORT = 587
