@@ -45,6 +45,10 @@ if __name__ == '__main__':
     parser.add_argument('--smtp_login', dest='smtp_login', help='SMTP login', default=getattr(settings, 'SMTP_LOGIN', ''))
     parser.add_argument('--smtp_password', dest='smtp_password', help='SMTP login', default=getattr(settings, 'SMTP_PASSWORD', ''))
     parser.add_argument('--smtp_port', dest='smtp_port', help='SMTP login', default=getattr(settings, 'SMTP_PORT', 587))
+    parser.add_argument('--send_on_empty', dest='send_on_empty', help='Send mailing even if empty results (default:True)',
+                        default=True)
+    parser.add_argument('--send_only_on_empty', dest='send_only_on_empty',
+                        help=('Send mailing ONLY for empty results. This is useful when using for alarms'), default=False)
 
     args = parser.parse_args()
     args.smtp_port = int(args.smtp_port)
@@ -69,6 +73,8 @@ if __name__ == '__main__':
         print('Sender email address %s' % required_text)
         required_inputs = False
 
+    send_on_empty = (args.send_on_empty.lower() in ('0', 'false', 'no', 'f', 'n'))
+
     if required_inputs:
         results = get_redash_results_for_query(args.domain,
                                                args.query_id,
@@ -78,6 +84,13 @@ if __name__ == '__main__':
             rows_by_recipient = {args.to_address: rows}
         else:
             rows_by_recipient = split_rows_by_column(rows, args.to_address)
+
+        empty = not len(rows)
+        if empty:
+            if not send_on_empty:
+                exit()
+        elif args.send_only_on_empty:
+            exit() # not empty, so skipping
 
         server = smtplib.SMTP(args.smtp_host, args.smtp_port)
         server.ehlo()
@@ -93,18 +106,20 @@ if __name__ == '__main__':
             msg['From'] = args.from_address
             msg['To'] = recipient
             msg.attach(MIMEText(args.body, 'plain'))
-            csv_file = io.StringIO()
-            csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-            keys = list(rows[0].keys())
-            csv_writer.writerow(keys)
-            for row in rows:
-                csv_writer.writerow([row[key] for key in keys])
-            csv_attachment = MIMEBase('application', 'octet-stream')
-            csv_attachment.set_payload(csv_file.getvalue())
-            encoders.encode_base64(csv_attachment)
-            csv_attachment.add_header('Content-Disposition', 'attachment',
-                                      filename=filename)
-            msg.attach(csv_attachment)
+            if not empty:
+                csv_file = io.StringIO()
+                csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+                keys = list(rows[0].keys())
+                csv_writer.writerow(keys)
+                for row in rows:
+                    csv_writer.writerow([row[key] for key in keys])
+                csv_attachment = MIMEBase('application', 'octet-stream')
+                csv_attachment.set_payload(csv_file.getvalue())
+                encoders.encode_base64(csv_attachment)
+                csv_attachment.add_header('Content-Disposition', 'attachment',
+                                          filename=filename)
+                msg.attach(csv_attachment)
+
             server.sendmail(args.from_address, msg['To'], msg.as_string())
 
         server.quit()
