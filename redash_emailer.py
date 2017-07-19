@@ -52,7 +52,6 @@ def main(args):
     filename = 'query_%s_results.csv' % args.query_id
 
     for recipient, rows in rows_by_recipient.items():
-        print(args.body)
         msg = MIMEMultipart()
         msg['Subject'] = args.subject
         msg['From'] = args.from_address
@@ -70,7 +69,7 @@ def main(args):
         csv_attachment.add_header('Content-Disposition', 'attachment',
                                   filename=filename)
         msg.attach(csv_attachment)
-        server.sendmail(args.from_address, msg['To'], msg.as_string())
+        server.sendmail(args.from_address, [x.strip() for x in msg['To'].split(',')], msg.as_string())
 
     server.quit()
 
