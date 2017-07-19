@@ -11,3 +11,7 @@ This Python 3 script fetches Redash query results and sends them via email as CS
 ## Recipient
 
 You can set the recipient with either `--to` on the command line, or `TO_ADDRESS` in `settings.py`. In either case, if the recipient value is not an email address (containing `@`), it will be assumed to be the name of a column in the Redash query results, and that column must contain email addresses. This allows more complex workflows in which the query itself determines who receives which records.
+
+## Amazon Lambda
+
+Running `./prepare_lambda_upload.sh` from within a working local install will generate a `redash-emailer.zip` file that can be uploaded and run on Amazon Lambda.

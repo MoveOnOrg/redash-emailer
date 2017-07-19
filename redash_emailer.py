@@ -5,8 +5,20 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import requests
+import os
 import smtplib
+import sys
 
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if os.path.exists(os.path.join(BASE_DIR, 'settings.py')):
+    import settings
+else:
+    settings = {}
+
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
 def get_redash_results_for_query(domain, query_id, query_key):
     query_url = '%s/api/queries/%s' % (domain, query_id)
@@ -22,16 +34,49 @@ def split_rows_by_column(rows, column):
         split_rows[key].append(record)
     return split_rows
 
+def main(args):
+    results = get_redash_results_for_query(args.domain,
+                                           args.query_id,
+                                           args.query_key)
+    rows = results.get('query_result', {}).get('data', {}).get('rows', [])
+    if '@' in args.to_address:
+        rows_by_recipient = {args.to_address: rows}
+    else:
+        rows_by_recipient = split_rows_by_column(rows, args.to_address)
+
+    server = smtplib.SMTP(args.smtp_host, args.smtp_port)
+    server.ehlo()
+    server.starttls()
+    server.login(args.smtp_login, args.smtp_password)
+
+    filename = 'query_%s_results.csv' % args.query_id
+
+    for recipient, rows in rows_by_recipient.items():
+        msg = MIMEMultipart()
+        msg['Subject'] = args.subject
+        msg['From'] = args.from_address
+        msg['To'] = recipient
+        msg.attach(MIMEText(args.body, 'plain'))
+        csv_file = io.StringIO()
+        csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+        keys = list(rows[0].keys())
+        csv_writer.writerow(keys)
+        for row in rows:
+            csv_writer.writerow([row[key] for key in keys])
+        csv_attachment = MIMEBase('application', 'octet-stream')
+        csv_attachment.set_payload(csv_file.getvalue())
+        encoders.encode_base64(csv_attachment)
+        csv_attachment.add_header('Content-Disposition', 'attachment',
+                                  filename=filename)
+        msg.attach(csv_attachment)
+        server.sendmail(args.from_address, [x.strip() for x in msg['To'].split(',')], msg.as_string())
+
+    server.quit()
+
+    return True
+
 if __name__ == '__main__':
     import argparse
-    import os
-    import sys
-
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    if os.path.exists(os.path.join(BASE_DIR, 'settings.py')):
-        import settings
-    else:
-        settings = {}
 
     parser = argparse.ArgumentParser(description='Send Redash results via Email')
     parser.add_argument('--domain', dest='domain', help='Redash instance domain name', default=getattr(settings, 'REDASH_DOMAIN', False))
@@ -70,41 +115,32 @@ if __name__ == '__main__':
         required_inputs = False
 
     if required_inputs:
-        results = get_redash_results_for_query(args.domain,
-                                               args.query_id,
-                                               args.query_key)
-        rows = results.get('query_result', {}).get('data', {}).get('rows', [])
-        if '@' in args.to_address:
-            rows_by_recipient = {args.to_address: rows}
-        else:
-            rows_by_recipient = split_rows_by_column(rows, args.to_address)
+        main(args)
 
-        server = smtplib.SMTP(args.smtp_host, args.smtp_port)
-        server.ehlo()
-        server.starttls()
-        server.login(args.smtp_login, args.smtp_password)
+def aws_lambda(event, context):
 
-        filename = 'query_%s_results.csv' % args.query_id
+    if not event.get('domain', False):
+        event['domain'] = getattr(settings, 'REDASH_DOMAIN', False)
+    if not event.get('query_id', False):
+        event['query_id'] = getattr(settings, 'REDASH_QUERY_ID', False)
+    if not event.get('query_key', False):
+        event['query_key'] = getattr(settings, 'REDASH_QUERY_KEY', False)
+    if not event.get('to_address', False):
+        event['to_address'] = getattr(settings, 'TO_ADDRESS', False)
+    if not event.get('from_address', False):
+        event['from_address'] = getattr(settings, 'FROM_ADDRESS', False)
+    if not event.get('subject', False):
+        event['subject'] = getattr(settings, 'EMAIL_SUBJECT', False)
+    if not event.get('body', False):
+        event['body'] = getattr(settings, 'EMAIL_BODY', False)
+    if not event.get('smtp_host', False):
+        event['smtp_host'] = getattr(settings, 'SMTP_HOST', False)
+    if not event.get('smtp_login', False):
+        event['smtp_login'] = getattr(settings, 'SMTP_LOGIN', False)
+    if not event.get('smtp_password', False):
+        event['smtp_password'] = getattr(settings, 'SMTP_PASSWORD', False)
+    if not event.get('smtp_port', False):
+        event['smtp_port'] = getattr(settings, 'SMTP_PORT', False)
 
-        for recipient, rows in rows_by_recipient.items():
-            print(args.body)
-            msg = MIMEMultipart()
-            msg['Subject'] = args.subject
-            msg['From'] = args.from_address
-            msg['To'] = recipient
-            msg.attach(MIMEText(args.body, 'plain'))
-            csv_file = io.StringIO()
-            csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-            keys = list(rows[0].keys())
-            csv_writer.writerow(keys)
-            for row in rows:
-                csv_writer.writerow([row[key] for key in keys])
-            csv_attachment = MIMEBase('application', 'octet-stream')
-            csv_attachment.set_payload(csv_file.getvalue())
-            encoders.encode_base64(csv_attachment)
-            csv_attachment.add_header('Content-Disposition', 'attachment',
-                                      filename=filename)
-            msg.attach(csv_attachment)
-            server.sendmail(args.from_address, msg['To'], msg.as_string())
-
-        server.quit()
+    args = Struct(**event)
+    return main(args)
