@@ -1,10 +1,10 @@
 # Redash Emailer
 
-This Python 3 script fetches Redash query results and sends them via email as CSV attachment.
+This Python 3.6 script fetches Redash query results and sends them via email as CSV attachment.
 
 ## Getting started
 
-* Within a Python 3 environment, run `pip install -r requirements`.
+* Within a Python 3.6 environment, run `pip install -r requirements`.
 * Copy `settings.py.example` to `settings.py`, fill in values.
 * Run `python redash_emailer.py -h` to get input options.
 
@@ -14,4 +14,4 @@ You can set the recipient with either `--to` on the command line, or `TO_ADDRESS
 
 ## Amazon Lambda
 
-Running `./prepare_lambda_upload.sh` from within a working local install will generate a `redash-emailer.zip` file that can be uploaded and run on Amazon Lambda.
+Copy `zappa_settings.json` from 1Password into main directory. Run `zappa update` to update code on Amazon Lambda.
