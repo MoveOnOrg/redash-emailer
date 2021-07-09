@@ -1,1 +1,2 @@
 requests
+zappa==0.53.0
