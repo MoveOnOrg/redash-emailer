@@ -38,7 +38,19 @@ def main(args):
     results = get_redash_results_for_query(args.domain,
                                            args.query_id,
                                            args.query_key)
-    rows = results.get('query_result', {}).get('data', {}).get('rows', [])
+    data = results.get('query_result', {}).get('data', {})
+    rows = data.get('rows', [])
+
+    # Order columns same way as it's returned in the Redash query
+    cols = [col['friendly_name'] for col in data.get('columns', [])]
+    ordered_rows = []
+    for row in rows:
+        new_row = {}
+        for col in cols:
+            new_row[col] = row[col]
+        ordered_rows.append(new_row)
+    rows = ordered_rows
+
     if '@' in args.to_address:
         rows_by_recipient = {args.to_address: rows}
     else:
