@@ -7,7 +7,6 @@ from email.mime.text import MIMEText
 import requests
 import os
 import smtplib
-import sys
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -16,14 +15,16 @@ if os.path.exists(os.path.join(BASE_DIR, 'settings.py')):
 else:
     settings = {}
 
+
 class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
+
 def get_redash_results_for_query(domain, query_id, query_key):
     query_url = '%s/api/queries/%s' % (domain, query_id)
     return requests.get(query_url + '/results.json',
-                           params={'api_key': query_key}).json()
+                        params={'api_key': query_key}).json()
 
 def split_rows_by_column(rows, column):
     split_rows = {}
@@ -33,6 +34,7 @@ def split_rows_by_column(rows, column):
             split_rows[key] = []
         split_rows[key].append(record)
     return split_rows
+
 
 def main(args):
     results = get_redash_results_for_query(args.domain,
@@ -62,30 +64,36 @@ def main(args):
     server.login(args.smtp_login, args.smtp_password)
 
     filename = 'query_%s_results.csv' % args.query_id
+    body_text = args.body
+    if len(rows) == 0:
+        body_text = body_text + '\n No data was returned; skipping attachment.'
 
     for recipient, rows in rows_by_recipient.items():
         msg = MIMEMultipart()
         msg['Subject'] = args.subject
         msg['From'] = args.from_address
         msg['To'] = recipient
-        msg.attach(MIMEText(args.body, 'plain'))
-        csv_file = io.StringIO()
-        csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-        keys = list(rows[0].keys())
-        csv_writer.writerow(keys)
-        for row in rows:
-            csv_writer.writerow([row[key] for key in keys])
-        csv_attachment = MIMEBase('application', 'octet-stream')
-        csv_attachment.set_payload(csv_file.getvalue())
-        encoders.encode_base64(csv_attachment)
-        csv_attachment.add_header('Content-Disposition', 'attachment',
-                                  filename=filename)
-        msg.attach(csv_attachment)
+        msg.attach(MIMEText(body_text, 'plain'))
+        if len(rows) > 0:
+            csv_file = io.StringIO()
+            csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+            keys = list(rows[0].keys())
+            csv_writer.writerow(keys)
+            for row in rows:
+                csv_writer.writerow([row[key] for key in keys])
+            csv_attachment = MIMEBase('application', 'octet-stream')
+            csv_attachment.set_payload(csv_file.getvalue())
+            encoders.encode_base64(csv_attachment)
+            csv_attachment.add_header('Content-Disposition', 'attachment',
+                                      filename=filename)
+            msg.attach(csv_attachment)
+
         server.sendmail(args.from_address, [x.strip() for x in msg['To'].split(',')], msg.as_string())
 
     server.quit()
 
     return True
+
 
 if __name__ == '__main__':
     import argparse
@@ -128,6 +136,7 @@ if __name__ == '__main__':
 
     if required_inputs:
         main(args)
+
 
 def aws_lambda(event, context):
 
