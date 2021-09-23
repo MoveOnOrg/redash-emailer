@@ -26,6 +26,7 @@ def get_redash_results_for_query(domain, query_id, query_key):
     return requests.get(query_url + '/results.json',
                         params={'api_key': query_key}).json()
 
+
 def split_rows_by_column(rows, column):
     split_rows = {}
     for record in rows:
@@ -76,11 +77,9 @@ def main(args):
         msg.attach(MIMEText(body_text, 'plain'))
         if len(rows) > 0:
             csv_file = io.StringIO()
-            csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-            keys = list(rows[0].keys())
-            csv_writer.writerow(keys)
-            for row in rows:
-                csv_writer.writerow([row[key] for key in keys])
+            csv_writer = csv.DictWriter(csv_file, rows[0].keys(), quoting=csv.QUOTE_NONNUMERIC)
+            csv_writer.writeheader()
+            csv_writer.writerows(rows)
             csv_attachment = MIMEBase('application', 'octet-stream')
             csv_attachment.set_payload(csv_file.getvalue())
             encoders.encode_base64(csv_attachment)
