@@ -1,0 +1,18 @@
+{
+    "prod": {
+        "app_function": "redash_emailer.aws_lambda",
+        "aws_region": "us-west-1",
+        "profile_name": "default",
+        "project_name": "redash-emailer",
+        "runtime": "python3.9",
+        "s3_bucket": "zappa-fmkb1g17t",
+        "vpc_config": {
+            "SubnetIds": [
+                "subnet-d8385681"
+            ],
+            "SecurityGroupIds": [
+                "sg-c2ee0da5"
+            ]
+        }
+    }
+}
