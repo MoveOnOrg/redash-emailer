@@ -2,4 +2,4 @@ settings.py
 __pycache__
 *.pyc
 venv
-zappa_settings.json
+.python-version
