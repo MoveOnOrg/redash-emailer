@@ -5,6 +5,8 @@
         "profile_name": "default",
         "project_name": "redash-emailer",
         "runtime": "python3.9",
+        "cloudwatch_log_level": "INFO",
+        "log_level": "INFO",
         "s3_bucket": "zappa-fmkb1g17t",
         "vpc_config": {
             "SubnetIds": [
