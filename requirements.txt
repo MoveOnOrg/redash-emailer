@@ -1,2 +1,1 @@
-requests
-zappa==0.56.1
+zappa==0.61.2
