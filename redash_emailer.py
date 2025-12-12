@@ -4,9 +4,14 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import logging
 import requests
+from pywell.secrets_manager import get_secret
 import os
 import smtplib
+
+logger = logging.getLogger()
+logger.setLevel("INFO")
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -138,29 +143,33 @@ if __name__ == '__main__':
 
 
 def aws_lambda(event, context):
+    args = event.get("kwargs")
 
-    if not event.get('domain', False):
-        event['domain'] = getattr(settings, 'REDASH_DOMAIN', False)
-    if not event.get('query_id', False):
-        event['query_id'] = getattr(settings, 'REDASH_QUERY_ID', False)
-    if not event.get('query_key', False):
-        event['query_key'] = getattr(settings, 'REDASH_QUERY_KEY', False)
-    if not event.get('to_address', False):
-        event['to_address'] = getattr(settings, 'TO_ADDRESS', False)
-    if not event.get('from_address', False):
-        event['from_address'] = getattr(settings, 'FROM_ADDRESS', False)
-    if not event.get('subject', False):
-        event['subject'] = getattr(settings, 'EMAIL_SUBJECT', False)
-    if not event.get('body', False):
-        event['body'] = getattr(settings, 'EMAIL_BODY', False)
-    if not event.get('smtp_host', False):
-        event['smtp_host'] = getattr(settings, 'SMTP_HOST', False)
-    if not event.get('smtp_login', False):
-        event['smtp_login'] = getattr(settings, 'SMTP_LOGIN', False)
-    if not event.get('smtp_password', False):
-        event['smtp_password'] = getattr(settings, 'SMTP_PASSWORD', False)
-    if not event.get('smtp_port', False):
-        event['smtp_port'] = getattr(settings, 'SMTP_PORT', False)
+    # non-secrets
+    if not args.get('event_name', False):
+        args['event_name'] = getattr(settings, 'EVENT_NAME', False)
+    if not args.get('query_id', False):
+        args['query_id'] = getattr(settings, 'REDASH_QUERY_ID', False)
+    if not args.get('to_address', False):
+        args['to_address'] = getattr(settings, 'TO_ADDRESS', False)
+    if not args.get('from_address', False):
+        args['from_address'] = getattr(settings, 'FROM_ADDRESS', False)
+    if not args.get('subject', False):
+        args['subject'] = getattr(settings, 'EMAIL_SUBJECT', False)
+    if not args.get('body', False):
+        args['body'] = getattr(settings, 'EMAIL_BODY', False)
 
-    args = Struct(**event)
-    return main(args)
+    secrets = get_secret("redash-emailer")
+
+    # secrets
+    args['domain'] = secrets.get('REDASH_DOMAIN', False)
+    args['smtp_host'] = secrets.get('SMTP_HOST', False)
+    args['smtp_login'] = secrets.get('SMTP_LOGIN', False)
+    args['smtp_password'] = secrets.get('SMTP_PASSWORD', False)
+    args['smtp_port'] = secrets.get('SMTP_PORT', False)
+    args['query_key'] = secrets.get(f'{args.get("query_id")}_REDASH_QUERY_KEY', False)
+
+    app_struct = Struct(**args)
+
+    logger.info("Started with query_id: %s, event_name: %s ", args['query_id'], args['event_name'])
+    return main(app_struct)
