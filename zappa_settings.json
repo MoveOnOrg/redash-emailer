@@ -2,12 +2,17 @@
   "prod": {
     "app_function": "redash_emailer.aws_lambda",
     "aws_region": "us-west-1",
-    "profile_name": "default",
     "project_name": "redash-emailer",
     "runtime": "python3.12",
     "cloudwatch_log_level": "INFO",
+    "cloudwatch_data_trace": true,
+    "keep_warm": false,
     "log_level": "INFO",
     "s3_bucket": "zappa-fmkb1g17t",
+    "manage_roles": false, // required to specify role_name below
+    "role_name": "test_python",
+    "slim_handler": false,
+    "apigateway_enabled": false,
     "vpc_config": {
       "SubnetIds": [
         "subnet-d8385681"
@@ -18,8 +23,19 @@
     },
     "exclude": [
       ".git",
-      ".pytest_cache",
-      "mo-bin"
+      ".pytest_cache"
+    ],
+    "events": [
+      {
+        "function": "redash_emailer.aws_lambda",
+        "expression": "cron(*/5 * * * ? *)",
+        "kwargs": {
+          "query_id": "13032",
+          "event_name": "test_event",
+          "to_address": "esteban.ginocchiosilva@moveon.org",
+          "from_address": "esteban.ginocchiosilva@moveon.org"
+        }
+      }
     ]
   }
 }
