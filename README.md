@@ -15,10 +15,6 @@ This script fetches Redash query results and sends them via email as CSV attachm
   The virtualenv should auto-activate.
   - Run `pip install -r requirements.txt`
 
-> [!WARNING]
-> To-do: We should move secrets to AWS secrets manager instead.
-
-- Copy `settings.py.example` to `settings.py`, fill in values with the ones stored in 1password as `redash-emailer settings.py`.
 - Run `python redash_emailer.py -h` to get input options.
 
 ## Recipient
