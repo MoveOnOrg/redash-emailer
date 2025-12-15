@@ -28,12 +28,41 @@
     "events": [
       {
         "function": "redash_emailer.aws_lambda",
-        "expression": "cron(*/5 * * * ? *)",
+        "name": "wednesday-accounting-report",
+        "expression": "cron(35 14 ? * WED *)",
         "kwargs": {
-          "query_id": "13032",
-          "event_name": "test_event",
-          "to_address": "esteban.ginocchiosilva@moveon.org",
-          "from_address": "esteban.ginocchiosilva@moveon.org"
+          "event_name": "wednesday-accounting-report",
+          "query_id": "12710",
+          "to_address": "rsmus-share@moveon.org",
+          "from_address": "MoveOn Reports <reports-noreply@moveon.org>",
+          "subject": "MoveOn Braintree disbursements",
+          "body": "Braintree disbursements in attached CSV."
+        }
+      },
+      {
+        "function": "redash_emailer.aws_lambda",
+        "name": "friday-accounting-report",
+        "expression": "cron(35 14 ? * FRI *)",
+        "kwargs": {
+          "event_name": "friday-accounting-report",
+          "query_id": "12710",
+          "to_address": "rsmus-share@moveon.org",
+          "from_address": "MoveOn Reports <reports-noreply@moveon.org>",
+          "subject": "MoveOn Braintree disbursements",
+          "body": "Braintree disbursements in attached CSV."
+        }
+      },
+      {
+        "function": "redash_emailer.aws_lambda",
+        "name": "monthly-accounting-report",
+        "expression": "cron(35 14 2 * ? *)",
+        "kwargs": {
+          "event_name": "monthly-accounting-report",
+          "query_id": "12710",
+          "to_address": "rsmus-share@moveon.org",
+          "from_address": "MoveOn Reports <reports-noreply@moveon.org>",
+          "subject": "MoveOn Braintree disbursements",
+          "body": "Braintree disbursements in attached CSV."
         }
       }
     ]
