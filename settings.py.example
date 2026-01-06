@@ -1,7 +1,12 @@
 # non secrets
-REDASH_QUERY_ID=123
 TO_ADDRESS=fake@example.com
 FROM_ADDRESS=fake@example.com
 EMAIL_SUBJECT = 'Test subject'
 EMAIL_BODY = 'Results from Redash'
 EVENT_NAME = 'test_event'
+
+# additional setup required:
+#   Each query id needs a corresponding secrets manager entry is needed for the `redash-emailer` secret
+#   key: {query number}_REDASH_QUERY_KEY
+#   value: {Redash query API key}
+REDASH_QUERY_ID=123

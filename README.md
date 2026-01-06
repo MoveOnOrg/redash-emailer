@@ -10,6 +10,12 @@ This script fetches Redash query results and sends them via email as CSV attachm
   - If the command above doesn't yield any output, then something is not configured correctly, so you will need to get help from another tech team member.
 - Run `pip install -r requirements.txt`
 
+- Additional setup required for new triggers:
+  - Each query id needs a corresponding secrets manager entry is needed for the `redash-emailer` secret:
+  - key: `{query number}_REDASH_QUERY_KEY`
+  - value: {Redash query API key}
+- See the test event in the AWS [console](https://us-west-1.console.aws.amazon.com/lambda/home?region=us-west-1#/functions/redash-emailer-prod?tab=testing).
+
 - Run `python redash_emailer.py -h` to get input options.
 
 ## Recipient
