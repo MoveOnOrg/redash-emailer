@@ -1,8 +1,4 @@
-REDASH_DOMAIN = 'http://example.com'
-SMTP_HOST = ''
-SMTP_LOGIN = ''
-SMTP_PASSWORD = ''
-SMTP_PORT = 587
+# non secrets
 EMAIL_SUBJECT = 'Test subject'
 EMAIL_BODY = 'Results from Redash'
 EVENT_NAME = 'test_event'
