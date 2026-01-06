@@ -1,4 +1,7 @@
 # non secrets
+REDASH_QUERY_ID=123
+TO_ADDRESS=fake@example.com
+FROM_ADDRESS=fake@example.com
 EMAIL_SUBJECT = 'Test subject'
 EMAIL_BODY = 'Results from Redash'
 EVENT_NAME = 'test_event'
