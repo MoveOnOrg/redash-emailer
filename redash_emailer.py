@@ -1,3 +1,4 @@
+from argparse import Namespace
 import csv
 import io
 from email import encoders
@@ -5,6 +6,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
+from types import SimpleNamespace
 import requests
 from pywell.secrets_manager import get_secret
 import os
@@ -144,39 +146,43 @@ if __name__ == '__main__':
 
     # secrets
     secrets = get_secret("redash-emailer")
-    secrets["domain"] = secrets.get("REDASH_DOMAIN", False)
-    secrets["smtp_host"] = secrets.get("SMTP_HOST", False)
-    secrets["smtp_login"] = secrets.get("SMTP_LOGIN", False)
-    secrets["smtp_password"] = secrets.get("SMTP_PASSWORD", False)
-    secrets["smtp_port"] = secrets.get("SMTP_PORT", False)
-    secrets["query_key"] = secrets.get(
-        f"{args.get('query_id')}_REDASH_QUERY_KEY", False
-    )
+    parsed_secrets = {
+        "domain": secrets.get("REDASH_DOMAIN", False),
+        "smtp_host": secrets.get("SMTP_HOST", False),
+        "smtp_login": secrets.get("SMTP_LOGIN", False),
+        "smtp_password": secrets.get("SMTP_PASSWORD", False),
+        "smtp_port": secrets.get("SMTP_PORT", False),
+        "query_key": secrets.get(f"{args.query_id}_REDASH_QUERY_KEY", False),
+    }
 
-    args.smtp_port = int(args.smtp_port)
+    args_dict = vars(args)
+
+    merged_args = Namespace(**{**parsed_secrets, **args_dict})
+
+    merged_args.smtp_port = int(merged_args.smtp_port)
 
     required_text = 'required as either arguments or settings.py.'
 
     required_inputs = True
 
-    if not args.domain:
+    if not merged_args.domain:
         print('Redash domain %s' % required_text)
         required_inputs = False
-    if not args.query_id:
+    if not merged_args.query_id:
         print('Redash query ID %s' % required_text)
         required_inputs = False
-    if not args.query_key:
+    if not merged_args.query_key:
         print('Redash query key %s' % required_text)
         required_inputs = False
-    if not args.to_address:
+    if not merged_args.to_address:
         print('Recipeint email addresses %s' % required_text)
         required_inputs = False
-    if not args.from_address:
+    if not merged_args.from_address:
         print('Sender email address %s' % required_text)
         required_inputs = False
 
     if required_inputs:
-        main(args)
+        main(merged_args)
 
 
 def aws_lambda(event, context):
