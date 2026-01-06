@@ -11,7 +11,7 @@ This script fetches Redash query results and sends them via email as CSV attachm
 - Run `pip install -r requirements.txt`
 
 - Additional setup required for new triggers:
-  - Each query id needs a corresponding secrets manager entry is needed for the `redash-emailer` secret:
+  - Each query id needs a corresponding secrets manager entry. Add it to the `redash-emailer` secret:
     - key: `{query number}_REDASH_QUERY_KEY`
     - value: {Redash query API key}
   - The Redash query needs to set to a recurring schedule so that the values are refreshed. This repo only grabs the last results, but it doesn't refresh the data on-demand.
