@@ -1,16 +1,16 @@
-from argparse import Namespace
 import csv
 import io
+import logging
+import os
+import smtplib
+from argparse import Namespace
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import logging
-from types import SimpleNamespace
+
 import requests
 from pywell.secrets_manager import get_secret
-import os
-import smtplib
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
