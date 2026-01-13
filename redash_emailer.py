@@ -1,12 +1,19 @@
 import csv
 import io
+import logging
+import os
+import smtplib
+from argparse import Namespace
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
 import requests
-import os
-import smtplib
+from pywell.secrets_manager import get_secret
+
+logger = logging.getLogger()
+logger.setLevel("INFO")
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -97,70 +104,119 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Send Redash results via Email')
-    parser.add_argument('--domain', dest='domain', help='Redash instance domain name', default=getattr(settings, 'REDASH_DOMAIN', False))
-    parser.add_argument('--query_id', dest='query_id', help='Redash query ID', default=getattr(settings, 'REDASH_QUERY_ID', False))
-    parser.add_argument('--query_key', dest='query_key', help='Redash query key', default=getattr(settings, 'REDASH_QUERY_KEY', False))
-    parser.add_argument('--to', dest='to_address', help='Recipeint email addresses (comma separated) or column name containing email addresses', default=getattr(settings, 'TO_ADDRESS', False))
-    parser.add_argument('--from', dest='from_address', help='Sender email addresses', default=getattr(settings, 'FROM_ADDRESS', False))
-    parser.add_argument('--subject', dest='subject', help='Email subject', default=getattr(settings, 'EMAIL_SUBJECT', 'Query results CSV'))
-    parser.add_argument('--body', dest='body', help='Email body', default=getattr(settings, 'EMAIL_BODY', 'See attached CSV.'))
-    parser.add_argument('--smtp_host', dest='smtp_host', help='SMTP host', default=getattr(settings, 'SMTP_HOST', 'localhost'))
-    parser.add_argument('--smtp_login', dest='smtp_login', help='SMTP login', default=getattr(settings, 'SMTP_LOGIN', ''))
-    parser.add_argument('--smtp_password', dest='smtp_password', help='SMTP login', default=getattr(settings, 'SMTP_PASSWORD', ''))
-    parser.add_argument('--smtp_port', dest='smtp_port', help='SMTP login', default=getattr(settings, 'SMTP_PORT', 587))
+    parser = argparse.ArgumentParser(description="Send Redash results via Email")
+    parser.add_argument(
+        "--event_name",
+        dest="event_name",
+        help="Unique name triggering this run, useful for logging",
+        default="CLI event",
+    )
+    parser.add_argument(
+        "--query_id",
+        dest="query_id",
+        help="Redash query ID",
+        default=getattr(settings, "REDASH_QUERY_ID", False),
+    )
+    parser.add_argument(
+        "--to",
+        dest="to_address",
+        help="Recipeint email addresses (comma separated) or column name containing email addresses",
+        default=getattr(settings, "TO_ADDRESS", False),
+    )
+    parser.add_argument(
+        "--from",
+        dest="from_address",
+        help="Sender email addresses",
+        default=getattr(settings, "FROM_ADDRESS", False),
+    )
+    parser.add_argument(
+        "--subject",
+        dest="subject",
+        help="Email subject",
+        default=getattr(settings, "EMAIL_SUBJECT", "Query results CSV"),
+    )
+    parser.add_argument(
+        "--body",
+        dest="body",
+        help="Email body",
+        default=getattr(settings, "EMAIL_BODY", "See attached CSV."),
+    )
 
     args = parser.parse_args()
-    args.smtp_port = int(args.smtp_port)
+
+    # secrets
+    secrets = get_secret("redash-emailer")
+    parsed_secrets = {
+        "domain": secrets.get("REDASH_DOMAIN", False),
+        "smtp_host": secrets.get("SMTP_HOST", False),
+        "smtp_login": secrets.get("SMTP_LOGIN", False),
+        "smtp_password": secrets.get("SMTP_PASSWORD", False),
+        "smtp_port": secrets.get("SMTP_PORT", False),
+        "query_key": secrets.get(f"{args.query_id}_REDASH_QUERY_KEY", False),
+    }
+
+    args_dict = vars(args)
+
+    merged_args = Namespace(**{**parsed_secrets, **args_dict})
+
+    merged_args.smtp_port = int(merged_args.smtp_port)
 
     required_text = 'required as either arguments or settings.py.'
 
     required_inputs = True
 
-    if not args.domain:
+    if not merged_args.domain:
         print('Redash domain %s' % required_text)
         required_inputs = False
-    if not args.query_id:
+    if not merged_args.query_id:
         print('Redash query ID %s' % required_text)
         required_inputs = False
-    if not args.query_key:
+    if not merged_args.query_key:
         print('Redash query key %s' % required_text)
         required_inputs = False
-    if not args.to_address:
+    if not merged_args.to_address:
         print('Recipeint email addresses %s' % required_text)
         required_inputs = False
-    if not args.from_address:
+    if not merged_args.from_address:
         print('Sender email address %s' % required_text)
         required_inputs = False
 
     if required_inputs:
-        main(args)
+        main(merged_args)
 
 
 def aws_lambda(event, context):
+    args = event.get("kwargs")
 
-    if not event.get('domain', False):
-        event['domain'] = getattr(settings, 'REDASH_DOMAIN', False)
-    if not event.get('query_id', False):
-        event['query_id'] = getattr(settings, 'REDASH_QUERY_ID', False)
-    if not event.get('query_key', False):
-        event['query_key'] = getattr(settings, 'REDASH_QUERY_KEY', False)
-    if not event.get('to_address', False):
-        event['to_address'] = getattr(settings, 'TO_ADDRESS', False)
-    if not event.get('from_address', False):
-        event['from_address'] = getattr(settings, 'FROM_ADDRESS', False)
-    if not event.get('subject', False):
-        event['subject'] = getattr(settings, 'EMAIL_SUBJECT', False)
-    if not event.get('body', False):
-        event['body'] = getattr(settings, 'EMAIL_BODY', False)
-    if not event.get('smtp_host', False):
-        event['smtp_host'] = getattr(settings, 'SMTP_HOST', False)
-    if not event.get('smtp_login', False):
-        event['smtp_login'] = getattr(settings, 'SMTP_LOGIN', False)
-    if not event.get('smtp_password', False):
-        event['smtp_password'] = getattr(settings, 'SMTP_PASSWORD', False)
-    if not event.get('smtp_port', False):
-        event['smtp_port'] = getattr(settings, 'SMTP_PORT', False)
+    # non-secrets
+    if not args.get("event_name", False):
+        args["event_name"] = getattr(settings, "EVENT_NAME", False)
+    if not args.get("query_id", False):
+        args["query_id"] = getattr(settings, "REDASH_QUERY_ID", False)
+    if not args.get("to_address", False):
+        args["to_address"] = getattr(settings, "TO_ADDRESS", False)
+    if not args.get("from_address", False):
+        args["from_address"] = getattr(settings, "FROM_ADDRESS", False)
+    if not args.get("subject", False):
+        args["subject"] = getattr(settings, "EMAIL_SUBJECT", False)
+    if not args.get("body", False):
+        args["body"] = getattr(settings, "EMAIL_BODY", False)
 
-    args = Struct(**event)
-    return main(args)
+    secrets = get_secret("redash-emailer")
+
+    # secrets
+    args["domain"] = secrets.get("REDASH_DOMAIN", False)
+    args["smtp_host"] = secrets.get("SMTP_HOST", False)
+    args["smtp_login"] = secrets.get("SMTP_LOGIN", False)
+    args["smtp_password"] = secrets.get("SMTP_PASSWORD", False)
+    args["smtp_port"] = secrets.get("SMTP_PORT", False)
+    args["query_key"] = secrets.get(f"{args.get('query_id')}_REDASH_QUERY_KEY", False)
+
+    app_struct = Struct(**args)
+
+    logger.info(
+        "Started with query_id: %s, event_name: %s ",
+        args["query_id"],
+        args["event_name"],
+    )
+    return main(app_struct)

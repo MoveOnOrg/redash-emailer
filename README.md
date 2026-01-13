@@ -1,17 +1,29 @@
 # Redash Emailer
 
-This Python 3.6 script fetches Redash query results and sends them via email as CSV attachment.
+This script fetches Redash query results and sends them via email as CSV attachment.
 
-## Getting started
+## Setting up your pyenv virtual environment for local development on MacOS
 
-* Within a Python 3.6 environment, run `pip install -r requirements`.
-* Copy `settings.py.example` to `settings.py`, fill in values.
-* Run `python redash_emailer.py -h` to get input options.
+- You only need to run this once for this repository on your machine:
+  - Follow the steps described in our [Notion docs for setting up `pyenv` on MacOS for development here](https://www.notion.so/moveonorg/Python-Tools-d30deef8d15d47d58f66b4dc7e0e9943?source=copy_link#2cc12fe515bb8017b148d47f5b400e4b), make sure you follow step 3 (Setting up repositories with pyenv) with Python 3.12.
+  - Confirm that this worked by checking that this command outputs a correct venv path `echo $VIRTUAL_ENV`
+  - If the command above doesn't yield any output, then something is not configured correctly, so you will need to get help from another tech team member.
+- Run `pip install -r requirements.txt`
+- Ensure you have a development AWS credential set up, preferably with `aws-vault`.
+- Additional setup required for new triggers:
+  - Each query id needs a corresponding secrets manager entry. Add it to the `redash-emailer` secret:
+    - key: `{query number}_REDASH_QUERY_KEY`
+    - value: {Redash query API key}
+  - The Redash query needs to set to a recurring schedule so that the values are refreshed. This repo only grabs the last results, but it doesn't refresh the data on-demand.
+- See the test event in the AWS [console](https://us-west-1.console.aws.amazon.com/lambda/home?region=us-west-1#/functions/redash-emailer-prod?tab=testing).
+- You can also test the script manually using Query 13032 and your email address. Query 13032 does not return any sensitive data:
+
+```bash
+python redash_emailer.py --query_id 13032 --to '<your-email-here>' --from '<your-email-here>'
+```
+
+- Run `python redash_emailer.py -h` to get input options.
 
 ## Recipient
 
 You can set the recipient with either `--to` on the command line, or `TO_ADDRESS` in `settings.py`. In either case, if the recipient value is not an email address (containing `@`), it will be assumed to be the name of a column in the Redash query results, and that column must contain email addresses. This allows more complex workflows in which the query itself determines who receives which records.
-
-## Amazon Lambda
-
-Copy `zappa_settings.json` from 1Password into main directory. Run `zappa update` to update code on Amazon Lambda.
